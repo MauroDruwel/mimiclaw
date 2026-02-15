@@ -10,82 +10,82 @@ static const char *TAG = "skills";
 
 /* ── Built-in skill contents ─────────────────────────────────── */
 
-static const char *BUILTIN_WEATHER =
-    "# Weather\n"
-    "\n"
-    "Get current weather and forecasts using web_search.\n"
-    "\n"
-    "## When to use\n"
-    "When the user asks about weather, temperature, or forecasts.\n"
-    "\n"
-    "## How to use\n"
-    "1. Use get_current_time to know the current date\n"
-    "2. Use web_search with a query like \"weather in [city] today\"\n"
-    "3. Extract temperature, conditions, and forecast from results\n"
-    "4. Present in a concise, friendly format\n"
-    "\n"
-    "## Example\n"
-    "User: \"What's the weather in Tokyo?\"\n"
-    "→ get_current_time\n"
-    "→ web_search \"weather Tokyo today February 2026\"\n"
-    "→ \"Tokyo: 8°C, partly cloudy. High 12°C, low 4°C. Light wind from the north.\"\n";
+#define BUILTIN_WEATHER \
+    "# Weather\n" \
+    "\n" \
+    "Get current weather and forecasts using web_search.\n" \
+    "\n" \
+    "## When to use\n" \
+    "When the user asks about weather, temperature, or forecasts.\n" \
+    "\n" \
+    "## How to use\n" \
+    "1. Use get_current_time to know the current date\n" \
+    "2. Use web_search with a query like \"weather in [city] today\"\n" \
+    "3. Extract temperature, conditions, and forecast from results\n" \
+    "4. Present in a concise, friendly format\n" \
+    "\n" \
+    "## Example\n" \
+    "User: \"What's the weather in Tokyo?\"\n" \
+    "→ get_current_time\n" \
+    "→ web_search \"weather Tokyo today February 2026\"\n" \
+    "→ \"Tokyo: 8°C, partly cloudy. High 12°C, low 4°C. Light wind from the north.\"\n"
 
-static const char *BUILTIN_DAILY_BRIEFING =
-    "# Daily Briefing\n"
-    "\n"
-    "Compile a personalized daily briefing for the user.\n"
-    "\n"
-    "## When to use\n"
-    "When the user asks for a daily briefing, morning update, or \"what's new today\".\n"
-    "Also useful as a heartbeat/cron task.\n"
-    "\n"
-    "## How to use\n"
-    "1. Use get_current_time for today's date\n"
-    "2. Read /spiffs/memory/MEMORY.md for user preferences and context\n"
-    "3. Read today's daily note if it exists\n"
-    "4. Use web_search for relevant news based on user interests\n"
-    "5. Compile a concise briefing covering:\n"
-    "   - Date and time\n"
-    "   - Weather (if location known from USER.md)\n"
-    "   - Relevant news/updates based on user interests\n"
-    "   - Any pending tasks from memory\n"
-    "   - Any scheduled cron jobs\n"
-    "\n"
-    "## Format\n"
-    "Keep it brief — 5-10 bullet points max. Use the user's preferred language.\n";
+#define BUILTIN_DAILY_BRIEFING \
+    "# Daily Briefing\n" \
+    "\n" \
+    "Compile a personalized daily briefing for the user.\n" \
+    "\n" \
+    "## When to use\n" \
+    "When the user asks for a daily briefing, morning update, or \"what's new today\".\n" \
+    "Also useful as a heartbeat/cron task.\n" \
+    "\n" \
+    "## How to use\n" \
+    "1. Use get_current_time for today's date\n" \
+    "2. Read /spiffs/memory/MEMORY.md for user preferences and context\n" \
+    "3. Read today's daily note if it exists\n" \
+    "4. Use web_search for relevant news based on user interests\n" \
+    "5. Compile a concise briefing covering:\n" \
+    "   - Date and time\n" \
+    "   - Weather (if location known from USER.md)\n" \
+    "   - Relevant news/updates based on user interests\n" \
+    "   - Any pending tasks from memory\n" \
+    "   - Any scheduled cron jobs\n" \
+    "\n" \
+    "## Format\n" \
+    "Keep it brief — 5-10 bullet points max. Use the user's preferred language.\n"
 
-static const char *BUILTIN_SKILL_CREATOR =
-    "# Skill Creator\n"
-    "\n"
-    "Create new skills for MimiClaw.\n"
-    "\n"
-    "## When to use\n"
-    "When the user asks to create a new skill, teach the bot something, or add a new capability.\n"
-    "\n"
-    "## How to create a skill\n"
-    "1. Choose a short, descriptive name (lowercase, hyphens ok)\n"
-    "2. Write a SKILL.md file with this structure:\n"
-    "   - `# Title` — clear name\n"
-    "   - Brief description paragraph\n"
-    "   - `## When to use` — trigger conditions\n"
-    "   - `## How to use` — step-by-step instructions\n"
-    "   - `## Example` — concrete example (optional but helpful)\n"
-    "3. Save to `/spiffs/skills/<name>.md` using write_file\n"
-    "4. The skill will be automatically available after the next conversation\n"
-    "\n"
-    "## Best practices\n"
-    "- Keep skills concise — the context window is limited\n"
-    "- Focus on WHAT to do, not HOW (the agent is smart)\n"
-    "- Include specific tool calls the agent should use\n"
-    "- Test by asking the agent to use the new skill\n"
-    "\n"
-    "## Example\n"
-    "To create a \"translate\" skill:\n"
-    "write_file path=\"/spiffs/skills/translate.md\" content=\"# Translate\\n\\nTranslate text between languages.\\n\\n"
-    "## When to use\\nWhen the user asks to translate text.\\n\\n"
-    "## How to use\\n1. Identify source and target languages\\n"
-    "2. Translate directly using your language knowledge\\n"
-    "3. For specialized terms, use web_search to verify\\n\"\n";
+#define BUILTIN_SKILL_CREATOR \
+    "# Skill Creator\n" \
+    "\n" \
+    "Create new skills for MimiClaw.\n" \
+    "\n" \
+    "## When to use\n" \
+    "When the user asks to create a new skill, teach the bot something, or add a new capability.\n" \
+    "\n" \
+    "## How to create a skill\n" \
+    "1. Choose a short, descriptive name (lowercase, hyphens ok)\n" \
+    "2. Write a SKILL.md file with this structure:\n" \
+    "   - `# Title` — clear name\n" \
+    "   - Brief description paragraph\n" \
+    "   - `## When to use` — trigger conditions\n" \
+    "   - `## How to use` — step-by-step instructions\n" \
+    "   - `## Example` — concrete example (optional but helpful)\n" \
+    "3. Save to `/spiffs/skills/<name>.md` using write_file\n" \
+    "4. The skill will be automatically available after the next conversation\n" \
+    "\n" \
+    "## Best practices\n" \
+    "- Keep skills concise — the context window is limited\n" \
+    "- Focus on WHAT to do, not HOW (the agent is smart)\n" \
+    "- Include specific tool calls the agent should use\n" \
+    "- Test by asking the agent to use the new skill\n" \
+    "\n" \
+    "## Example\n" \
+    "To create a \"translate\" skill:\n" \
+    "write_file path=\"/spiffs/skills/translate.md\" content=\"# Translate\\n\\nTranslate text between languages.\\n\\n" \
+    "## When to use\\nWhen the user asks to translate text.\\n\\n" \
+    "## How to use\\n1. Identify source and target languages\\n" \
+    "2. Translate directly using your language knowledge\\n" \
+    "3. For specialized terms, use web_search to verify\\n\"\n"
 
 /* Built-in skill registry */
 typedef struct {
@@ -227,11 +227,8 @@ size_t skill_loader_build_summary(char *buf, size_t size)
         if (strcmp(name + name_len - 3, ".md") != 0) continue;
 
         /* Build full path */
-        char full_path[64];
+        char full_path[296];
         snprintf(full_path, sizeof(full_path), "%s/%s", MIMI_SPIFFS_BASE, name);
-
-        /* Extract skill filename (without .md) for display */
-        const char *skill_name = name + subdir_len;
 
         FILE *f = fopen(full_path, "r");
         if (!f) continue;
