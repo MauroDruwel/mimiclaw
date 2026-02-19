@@ -139,19 +139,39 @@ static bool provider_is_openai(void)
     return strcmp(s_provider, "openai") == 0;
 }
 
+static bool provider_is_openrouter(void)
+{
+    return strcmp(s_provider, "openrouter") == 0;
+}
+
+static bool provider_is_nvidia_nim(void)
+{
+    return strcmp(s_provider, "nvidia_nim") == 0;
+}
+
+/** Return the full API URL for the active provider. */
 static const char *llm_api_url(void)
 {
-    return provider_is_openai() ? MIMI_OPENAI_API_URL : MIMI_LLM_API_URL;
+    if (provider_is_openai()) return MIMI_OPENAI_API_URL;
+    if (provider_is_openrouter()) return MIMI_OPENROUTER_API_URL;
+    if (provider_is_nvidia_nim()) return MIMI_NVIDIA_NIM_API_URL;
+    return MIMI_LLM_API_URL;
 }
 
+/** Return the HTTP Host header value for the active provider. */
 static const char *llm_api_host(void)
 {
-    return provider_is_openai() ? "api.openai.com" : "api.anthropic.com";
+    if (provider_is_openai()) return "api.openai.com";
+    if (provider_is_openrouter()) return "openrouter.ai";
+    if (provider_is_nvidia_nim()) return "integrate.api.nvidia.com";
+    return "api.anthropic.com";
 }
 
+/** Return the HTTP request path for the active provider. */
 static const char *llm_api_path(void)
 {
-    return provider_is_openai() ? "/v1/chat/completions" : "/v1/messages";
+    if (provider_is_openai() || provider_is_openrouter() || provider_is_nvidia_nim()) return "/v1/chat/completions";
+    return "/v1/messages";
 }
 
 /* ── Init ─────────────────────────────────────────────────────── */
@@ -217,7 +237,7 @@ static esp_err_t llm_http_direct(const char *post_data, resp_buf_t *rb, int *out
 
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
-    if (provider_is_openai()) {
+    if (provider_is_openai() || provider_is_openrouter() || provider_is_nvidia_nim()) {
         if (s_api_key[0]) {
             char auth[LLM_API_KEY_MAX_LEN + 16];
             snprintf(auth, sizeof(auth), "Bearer %s", s_api_key);
@@ -245,7 +265,7 @@ static esp_err_t llm_http_via_proxy(const char *post_data, resp_buf_t *rb, int *
     int body_len = strlen(post_data);
     char header[1024];
     int hlen = 0;
-    if (provider_is_openai()) {
+    if (provider_is_openai() || provider_is_openrouter() || provider_is_nvidia_nim()) {
         hlen = snprintf(header, sizeof(header),
             "POST %s HTTP/1.1\r\n"
             "Host: %s\r\n"
