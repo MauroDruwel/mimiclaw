@@ -1,14 +1,18 @@
 # MimiClaw: $5チップで動くポケットAIアシスタント
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![DeepWiki](https://img.shields.io/badge/DeepWiki-mimiclaw-blue.svg)](https://deepwiki.com/memovai/mimiclaw)
-[![Discord](https://img.shields.io/badge/Discord-mimiclaw-5865F2?logo=discord&logoColor=white)](https://discord.gg/r8ZxSvB8Yr)
-[![X](https://img.shields.io/badge/X-@ssslvky-black?logo=x)](https://x.com/ssslvky)
-
-**[English](README.md) | [中文](README_CN.md) | [日本語](README_JA.md)**
+<p align="center">
+  <img src="assets/banner.png" alt="MimiClaw" width="500" />
+</p>
 
 <p align="center">
-  <img src="assets/banner.png" alt="MimiClaw" width="480" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://deepwiki.com/memovai/mimiclaw"><img src="https://img.shields.io/badge/DeepWiki-mimiclaw-blue.svg" alt="DeepWiki"></a>
+  <a href="https://discord.gg/r8ZxSvB8Yr"><img src="https://img.shields.io/badge/Discord-mimiclaw-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://x.com/ssslvky"><img src="https://img.shields.io/badge/X-@ssslvky-black?logo=x" alt="X"></a>
+</p>
+
+<p align="center">
+  <strong><a href="README.md">English</a> | <a href="README_CN.md">中文</a> | <a href="README_JA.md">日本語</a></strong>
 </p>
 
 **$5チップ上の世界初のAIアシスタント（OpenClaw）。Linuxなし、Node.jsなし、純粋なCのみ。**
@@ -49,6 +53,65 @@ cd mimiclaw
 
 idf.py set-target esp32s3
 ```
+
+<details>
+<summary>Ubuntu インストール</summary>
+
+推奨ベースライン:
+
+- Ubuntu 22.04/24.04
+- Python >= 3.10
+- CMake >= 3.16
+- Ninja >= 1.10
+- Git >= 2.34
+- flex >= 2.6
+- bison >= 3.8
+- gperf >= 3.1
+- dfu-util >= 0.11
+- `libusb-1.0-0`, `libffi-dev`, `libssl-dev`
+
+Ubuntu でのインストールとビルド:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv \
+  cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+./scripts/setup_idf_ubuntu.sh
+./scripts/build_ubuntu.sh
+```
+
+</details>
+
+<details>
+<summary>macOS インストール</summary>
+
+推奨ベースライン:
+
+- macOS 12/13/14
+- Xcode Command Line Tools
+- Homebrew
+- Python >= 3.10
+- CMake >= 3.16
+- Ninja >= 1.10
+- Git >= 2.34
+- flex >= 2.6
+- bison >= 3.8
+- gperf >= 3.1
+- dfu-util >= 0.11
+- `libusb`, `libffi`, `openssl`
+
+macOS でのインストールとビルド:
+
+```bash
+xcode-select --install
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+./scripts/setup_idf_macos.sh
+./scripts/build_macos.sh
+```
+
+</details>
 
 ### 設定
 
@@ -123,7 +186,9 @@ mimi> memory_write "内容"       # MEMORY.mdに書き込み
 mimi> heap_info                # 空きRAMはどれくらい？
 mimi> session_list             # 全チャットセッションを一覧
 mimi> session_clear 12345      # 会話を削除
-mimi> restart                  # 再起動
+mimi> heartbeat_trigger           # ハートビートチェックを手動トリガー
+mimi> cron_start                  # cronスケジューラを今すぐ開始
+mimi> restart                     # 再起動
 ```
 
 ## メモリ
@@ -135,6 +200,8 @@ MimiClawはすべてのデータをプレーンテキストファイルとして
 | `SOUL.md` | ボットの性格 — 編集して振る舞いを変更 |
 | `USER.md` | あなたの情報 — 名前、好み、言語 |
 | `MEMORY.md` | 長期記憶 — ボットが常に覚えておくべきこと |
+| `HEARTBEAT.md` | タスクリスト — ボットが定期的にチェックして自律的に実行 |
+| `cron.json` | スケジュールジョブ — AIが作成した定期・単発タスク |
 | `2026-02-05.md` | 日次メモ — 今日あったこと |
 | `tg_12345.jsonl` | チャット履歴 — ボットとの会話 |
 
@@ -146,8 +213,23 @@ MimiClawはAnthropicとOpenAI両方のツール呼び出しをサポート — L
 |--------|------|
 | `web_search` | Brave Search APIでウェブ検索、最新情報を取得 |
 | `get_current_time` | HTTP経由で現在の日時を取得し、システムクロックを設定 |
+| `cron_add` | 定期または単発タスクをスケジュール（LLMが自律的にcronジョブを作成） |
+| `cron_list` | スケジュール済みのcronジョブを一覧表示 |
+| `cron_remove` | IDでcronジョブを削除 |
 
 ウェブ検索を有効にするには、`mimi_secrets.h`で[Brave Search APIキー](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）を設定してください。
+
+## Cronタスク
+
+MimiClawにはcronスケジューラが内蔵されており、AIが自律的にタスクをスケジュールできます。LLMは`cron_add`ツールで定期ジョブ（「N秒ごと」）や単発ジョブ（「UNIXタイムスタンプで指定」）を作成できます。ジョブが発火すると、メッセージがエージェントループに注入され、AIが起動してタスクを処理・応答します。
+
+ジョブはSPIFFS（`cron.json`）に永続化され、再起動後も保持されます。活用例：日次サマリー、定期リマインダー、スケジュールチェック。
+
+## ハートビート
+
+ハートビートサービスはSPIFFS上の`HEARTBEAT.md`を定期的に読み取り、アクション可能なタスクがあるかチェックします。未完了の項目（空行、見出し、チェック済み`- [x]`以外）が見つかると、エージェントループにプロンプトを送信し、AIが自律的に処理します。
+
+これによりMimiClawはプロアクティブなアシスタントになります — `HEARTBEAT.md`にタスクを書き込めば、次のハートビートサイクルで自動的に拾い上げて実行します（デフォルト：30分ごと）。
 
 ## その他の機能
 
@@ -156,6 +238,8 @@ MimiClawはAnthropicとOpenAI両方のツール呼び出しをサポート — L
 - **デュアルコア** — ネットワークI/OとAI処理が別々のCPUコアで動作
 - **HTTPプロキシ** — CONNECTトンネル対応、制限付きネットワークに対応
 - **マルチプロバイダー** — Anthropic (Claude) と OpenAI (GPT) の両方をサポート、実行時に切り替え可能
+- **Cronスケジューラ** — AIが定期・単発タスクを自律的にスケジュール、再起動後も永続化
+- **ハートビート** — タスクファイルを定期チェックし、AIを自律的に駆動
 - **ツール呼び出し** — ReActエージェントループ、両プロバイダーでツール呼び出し対応
 
 ## 開発者向け
@@ -164,6 +248,10 @@ MimiClawはAnthropicとOpenAI両方のツール呼び出しをサポート — L
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — システム設計、モジュール構成、タスクレイアウト、メモリバジェット、プロトコル、Flashパーティション
 - **[docs/TODO.md](docs/TODO.md)** — 機能ギャップとロードマップ
+
+## Contributing
+
+Please read **[docs/CONTRIBUTE.md](docs/CONTRIBUTE.md)** before opening issues or pull requests.
 
 ## ライセンス
 

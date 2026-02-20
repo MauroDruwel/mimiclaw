@@ -1,14 +1,18 @@
 # MimiClaw: $5 芯片上的口袋 AI 助理
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![DeepWiki](https://img.shields.io/badge/DeepWiki-mimiclaw-blue.svg)](https://deepwiki.com/memovai/mimiclaw)
-[![Discord](https://img.shields.io/badge/Discord-mimiclaw-5865F2?logo=discord&logoColor=white)](https://discord.gg/r8ZxSvB8Yr)
-[![X](https://img.shields.io/badge/X-@ssslvky-black?logo=x)](https://x.com/ssslvky)
-
-**[English](README.md) | [中文](README_CN.md) | [日本語](README_JA.md)**
+<p align="center">
+  <img src="assets/banner.png" alt="MimiClaw" width="500" />
+</p>
 
 <p align="center">
-  <img src="assets/banner.png" alt="MimiClaw" width="480" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://deepwiki.com/memovai/mimiclaw"><img src="https://img.shields.io/badge/DeepWiki-mimiclaw-blue.svg" alt="DeepWiki"></a>
+  <a href="https://discord.gg/r8ZxSvB8Yr"><img src="https://img.shields.io/badge/Discord-mimiclaw-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://x.com/ssslvky"><img src="https://img.shields.io/badge/X-@ssslvky-black?logo=x" alt="X"></a>
+</p>
+
+<p align="center">
+  <strong><a href="README.md">English</a> | <a href="README_CN.md">中文</a> | <a href="README_JA.md">日本語</a></strong>
 </p>
 
 **$5 芯片上的 AI 助理（OpenClaw）。没有 Linux，没有 Node.js，纯 C。**
@@ -49,6 +53,65 @@ cd mimiclaw
 
 idf.py set-target esp32s3
 ```
+
+<details>
+<summary>Ubuntu 安装</summary>
+
+建议基线：
+
+- Ubuntu 22.04/24.04
+- Python >= 3.10
+- CMake >= 3.16
+- Ninja >= 1.10
+- Git >= 2.34
+- flex >= 2.6
+- bison >= 3.8
+- gperf >= 3.1
+- dfu-util >= 0.11
+- `libusb-1.0-0`、`libffi-dev`、`libssl-dev`
+
+Ubuntu 安装与构建：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv \
+  cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+./scripts/setup_idf_ubuntu.sh
+./scripts/build_ubuntu.sh
+```
+
+</details>
+
+<details>
+<summary>macOS 安装</summary>
+
+建议基线：
+
+- macOS 12/13/14
+- Xcode Command Line Tools
+- Homebrew
+- Python >= 3.10
+- CMake >= 3.16
+- Ninja >= 1.10
+- Git >= 2.34
+- flex >= 2.6
+- bison >= 3.8
+- gperf >= 3.1
+- dfu-util >= 0.11
+- `libusb`、`libffi`、`openssl`
+
+macOS 安装与构建：
+
+```bash
+xcode-select --install
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+./scripts/setup_idf_macos.sh
+./scripts/build_macos.sh
+```
+
+</details>
 
 ### 配置
 
@@ -138,7 +201,9 @@ mimi> memory_write "内容"       # 写入 MEMORY.md
 mimi> heap_info                # 还剩多少内存？
 mimi> session_list             # 列出所有会话
 mimi> session_clear 12345      # 删除一个会话
-mimi> restart                  # 重启
+mimi> heartbeat_trigger           # 手动触发一次心跳检查
+mimi> cron_start                  # 立即启动 cron 调度器
+mimi> restart                     # 重启
 ```
 
 ## 记忆
@@ -150,6 +215,8 @@ MimiClaw 把所有数据存为纯文本文件，可以直接读取和编辑：
 | `SOUL.md` | 机器人的人设 — 编辑它来改变行为方式 |
 | `USER.md` | 关于你的信息 — 姓名、偏好、语言 |
 | `MEMORY.md` | 长期记忆 — 它应该一直记住的事 |
+| `HEARTBEAT.md` | 待办清单 — 机器人定期检查并自主执行 |
+| `cron.json` | 定时任务 — AI 创建的周期性或一次性任务 |
 | `2026-02-05.md` | 每日笔记 — 今天发生了什么 |
 | `tg_12345.jsonl` | 聊天记录 — 你和它的对话 |
 
@@ -161,8 +228,23 @@ MimiClaw 同时支持 Anthropic 和 OpenAI 的工具调用 — LLM 在对话中�
 |------|------|
 | `web_search` | 通过 Brave Search API 搜索网页，获取实时信息 |
 | `get_current_time` | 通过 HTTP 获取当前日期和时间，并设置系统时钟 |
+| `cron_add` | 创建定时或一次性任务（LLM 自主创建 cron 任务） |
+| `cron_list` | 列出所有已调度的 cron 任务 |
+| `cron_remove` | 按 ID 删除 cron 任务 |
 
 启用网页搜索需要在 `mimi_secrets.h` 中设置 [Brave Search API key](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）。
+
+## 定时任务（Cron）
+
+MimiClaw 内置 cron 调度器，让 AI 可以自主安排任务。LLM 可以通过 `cron_add` 工具创建周期性任务（"每 N 秒"）或一次性任务（"在某个时间戳"）。任务触发时，消息会注入到 Agent 循环 — AI 自动醒来、处理任务并回复。
+
+任务持久化存储在 SPIFFS（`cron.json`），重启后不会丢失。典型用途：每日总结、定时提醒、定期巡检。
+
+## 心跳（Heartbeat）
+
+心跳服务会定期读取 SPIFFS 上的 `HEARTBEAT.md`，检查是否有待办事项。如果发现未完成的条目（非空行、非标题、非已勾选的 `- [x]`），就会向 Agent 循环发送提示，让 AI 自主处理。
+
+这让 MimiClaw 变成一个主动型助理 — 把任务写入 `HEARTBEAT.md`，机器人会在下一次心跳周期自动拾取执行（默认每 30 分钟）。
 
 ## 其他功能
 
@@ -171,6 +253,8 @@ MimiClaw 同时支持 Anthropic 和 OpenAI 的工具调用 — LLM 在对话中�
 - **双核** — 网络 I/O 和 AI 处理分别跑在不同 CPU 核心
 - **HTTP 代理** — CONNECT 隧道，适配受限网络
 - **多提供商** — 同时支持 Anthropic (Claude) 和 OpenAI (GPT)，运行时可切换
+- **定时任务** — AI 可自主创建周期性和一次性任务，重启后持久保存
+- **心跳服务** — 定期检查任务文件，驱动 AI 自主执行
 - **工具调用** — ReAct Agent 循环，两种提供商均支持工具调用
 
 ## 开发者
@@ -179,6 +263,10 @@ MimiClaw 同时支持 Anthropic 和 OpenAI 的工具调用 — LLM 在对话中�
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — 系统设计、模块划分、任务布局、内存分配、协议、Flash 分区
 - **[docs/TODO.md](docs/TODO.md)** — 功能差距和路线图
+
+## Contributing
+
+Please read **[docs/CONTRIBUTE.md](docs/CONTRIBUTE.md)** before opening issues or pull requests.
 
 ## 许可证
 
