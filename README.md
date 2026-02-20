@@ -31,7 +31,7 @@ MimiClaw turns a tiny ESP32-S3 board into a personal AI assistant. Plug it into 
 
 ![](assets/mimiclaw.png)
 
-You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it into an agent loop — the LLM thinks, calls tools, reads memory — and sends the reply back. Supports **Anthropic (Claude)**, **OpenAI (GPT)**, **OpenRouter**, and **NVIDIA NIM (completely free)** as providers, switchable at runtime. Everything runs on a single $5 chip with all your data stored locally on flash.
+You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it into an agent loop — the LLM thinks, calls tools, reads memory — and sends the reply back. Supports **Anthropic (Claude)**, **OpenAI (GPT)**, **OpenRouter**, and **[NVIDIA NIM](https://www.nvidia.com/en-us/ai/#nim) (free for development for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing)** as providers, switchable at runtime. Everything runs on a single $5 chip with all your data stored locally on flash.
 
 ## Quick Start
 
@@ -69,7 +69,7 @@ Edit `main/mimi_secrets.h`:
 #define MIMI_SECRET_WIFI_PASS       "YourWiFiPassword"
 #define MIMI_SECRET_TG_TOKEN        "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
 #define MIMI_SECRET_API_KEY         "sk-ant-api03-xxxxx"
-#define MIMI_SECRET_MODEL_PROVIDER  "anthropic"     // "anthropic", "openai", "openrouter", or "nvidia_nim"
+#define MIMI_SECRET_MODEL_PROVIDER  "anthropic"     // "anthropic", "openai", "openrouter", or "nvidia"
 #define MIMI_SECRET_SEARCH_KEY      ""              // optional: Brave Search API key
 #define MIMI_SECRET_PROXY_HOST      ""              // optional: e.g. "10.0.0.1"
 #define MIMI_SECRET_PROXY_PORT      ""              // optional: e.g. "7897"
@@ -109,7 +109,7 @@ Connect via serial to configure or debug. **Config commands** let you change set
 mimi> wifi_set MySSID MyPassword   # change WiFi network
 mimi> set_tg_token 123456:ABC...   # change Telegram bot token
 mimi> set_api_key sk-ant-api03-... # change API key (Anthropic, OpenAI, OpenRouter, or NVIDIA NIM)
-mimi> set_model_provider openai    # switch provider (anthropic|openai|openrouter|nvidia_nim)
+mimi> set_model_provider openai    # switch provider (anthropic|openai|openrouter|nvidia)
 mimi> set_model gpt-4o             # change LLM model
 mimi> set_proxy 127.0.0.1 7897  # set HTTP proxy
 mimi> clear_proxy                  # remove proxy

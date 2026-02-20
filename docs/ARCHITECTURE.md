@@ -54,7 +54,7 @@ Telegram App (User)
 │   └──────────────────────────────────────────┘    │
 └───────────────────────────────────────────────────┘
          │
-         │  Anthropic/OpenAI/OpenRouter API (HTTPS)
+         │  Anthropic/OpenAI/OpenRouter/NVIDIA NIM API (HTTPS)
          │  + Brave Search API (HTTPS)
          ▼
    ┌──────────────┐   ┌──────────────┐
@@ -285,7 +285,7 @@ MimiClaw supports multiple LLM providers via a unified API proxy:
 - **Anthropic** (`anthropic`) - Native Messages API
 - **OpenAI** (`openai`) - Chat Completions API
 - **OpenRouter** (`openrouter`) - OpenAI-compatible endpoint
-- **NVIDIA NIM** (`nvidia_nim`) - OpenAI-compatible endpoint, **completely free**
+- **NVIDIA NIM** (`nvidia`) - OpenAI-compatible endpoint (free for development/prototyping for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing)
 
 ### Anthropic API Format
 
