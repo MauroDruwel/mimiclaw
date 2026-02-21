@@ -256,9 +256,14 @@ esp_err_t tool_web_search_execute(const char *input_json, char *output, size_t o
     snprintf(path, sizeof(path),
              "/res/v1/web/search?q=%s&count=%d", encoded_query, SEARCH_RESULT_COUNT);
 
-    /* Allocate response buffer from PSRAM */
+    /* Allocate response buffer */
     search_buf_t sb = {0};
+#if CONFIG_SPIRAM
     sb.data = heap_caps_calloc(1, SEARCH_BUF_SIZE, MALLOC_CAP_SPIRAM);
+#else
+    /* No PSRAM: use smaller buffer from internal RAM */
+    sb.data = calloc(1, SEARCH_BUF_SIZE / 2);
+#endif
     if (!sb.data) {
         snprintf(output, output_size, "Error: Out of memory");
         return ESP_ERR_NO_MEM;

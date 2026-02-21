@@ -86,7 +86,11 @@ void app_main(void)
     esp_log_level_set("esp-x509-crt-bundle", ESP_LOG_WARN);
 
     ESP_LOGI(TAG, "========================================");
+#ifdef CONFIG_IDF_TARGET_ESP32S3
     ESP_LOGI(TAG, "  MimiClaw - ESP32-S3 AI Agent");
+#else
+    ESP_LOGI(TAG, "  MimiClaw - ESP32 AI Agent");
+#endif
     ESP_LOGI(TAG, "========================================");
 
     /* Print memory info */
@@ -94,6 +98,16 @@ void app_main(void)
              (int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     ESP_LOGI(TAG, "PSRAM free:    %d bytes",
              (int)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+
+    /* Input */
+    button_Init();
+    /* IMU (QMI8658) is only available on ESP32-S3 with correct hardware */
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+    imu_manager_init();
+    imu_manager_set_shake_callback(NULL);
+#else
+    ESP_LOGI(TAG, "IMU not available on ESP32");
+#endif
 
     /* Phase 1: Core infrastructure */
     ESP_ERROR_CHECK(init_nvs());

@@ -106,42 +106,62 @@ static esp_err_t fetch_time_via_proxy(char *out, size_t out_size)
     return ESP_OK;
 }
 
+/* Event handler that captures the Date response header */
+typedef struct { char date[64]; } time_fetch_ctx_t;
+
+static esp_err_t time_http_event_handler(esp_http_client_event_t *evt)
+{
+    time_fetch_ctx_t *ctx = (time_fetch_ctx_t *)evt->user_data;
+    if (evt->event_id == HTTP_EVENT_ON_HEADER) {
+        if (strcasecmp(evt->header_key, "Date") == 0 && evt->header_value) {
+            strncpy(ctx->date, evt->header_value, sizeof(ctx->date) - 1);
+        }
+    }
+    return ESP_OK;
+}
+
 /* Fetch time via direct HTTPS */
 static esp_err_t fetch_time_direct(char *out, size_t out_size)
 {
+    time_fetch_ctx_t ctx = {0};
+
     esp_http_client_config_t config = {
         .url = "https://api.telegram.org/",
         .method = HTTP_METHOD_HEAD,
         .timeout_ms = 10000,
         .crt_bundle_attach = esp_crt_bundle_attach,
+        .event_handler = time_http_event_handler,
+        .user_data = &ctx,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (!client) return ESP_FAIL;
 
     esp_err_t err = esp_http_client_perform(client);
-    if (err != ESP_OK) {
-        esp_http_client_cleanup(client);
-        return err;
-    }
-
-    /* Get Date header */
-    char date_val[64] = {0};
-    err = esp_http_client_get_header(client, "Date", (char **)&date_val);
-    /* esp_http_client_get_header returns pointer, not copy */
-    char *date_ptr = NULL;
-    esp_http_client_get_header(client, "Date", &date_ptr);
     esp_http_client_cleanup(client);
 
-    if (!date_ptr || date_ptr[0] == '\0') return ESP_ERR_NOT_FOUND;
+    if (err != ESP_OK) return err;
+    if (ctx.date[0] == '\0') return ESP_ERR_NOT_FOUND;
 
-    if (!parse_and_set_time(date_ptr, out, out_size)) return ESP_FAIL;
+    if (!parse_and_set_time(ctx.date, out, out_size)) return ESP_FAIL;
     return ESP_OK;
 }
 
 esp_err_t tool_get_time_execute(const char *input_json, char *output, size_t output_size)
 {
     ESP_LOGI(TAG, "Fetching current time...");
+
+    /* If the system clock has already been set (epoch > 2020-01-01), use it directly */
+    time_t now = time(NULL);
+    if (now > 1577836800) { /* 2020-01-01 00:00:00 UTC */
+        setenv("TZ", MIMI_TIMEZONE, 1);
+        tzset();
+        struct tm local;
+        localtime_r(&now, &local);
+        strftime(output, output_size, "%Y-%m-%d %H:%M:%S %Z (%A)", &local);
+        ESP_LOGI(TAG, "Time (from system clock): %s", output);
+        return ESP_OK;
+    }
 
     esp_err_t err;
     if (http_proxy_is_enabled()) {
