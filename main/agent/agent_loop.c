@@ -16,7 +16,7 @@
 
 static const char *TAG = "agent";
 
-#define TOOL_OUTPUT_SIZE  (8 * 1024)
+#define TOOL_OUTPUT_SIZE  MIMI_TOOL_OUTPUT_SIZE
 
 /* Build the assistant content array from llm_response_t for the messages history.
  * Returns a cJSON array with text and tool_use blocks. */
@@ -172,13 +172,20 @@ static void agent_loop_task(void *arg)
 {
     ESP_LOGI(TAG, "Agent loop started on core %d", xPortGetCoreID());
 
-    /* Allocate large buffers from PSRAM */
+    /* Allocate large buffers - PSRAM if available, internal RAM otherwise */
+#if CONFIG_SPIRAM
     char *system_prompt = heap_caps_calloc(1, MIMI_CONTEXT_BUF_SIZE, MALLOC_CAP_SPIRAM);
     char *history_json = heap_caps_calloc(1, MIMI_LLM_STREAM_BUF_SIZE, MALLOC_CAP_SPIRAM);
-    char *tool_output = heap_caps_calloc(1, TOOL_OUTPUT_SIZE, MALLOC_CAP_SPIRAM);
+    char *tool_output = heap_caps_calloc(1, MIMI_TOOL_OUTPUT_SIZE, MALLOC_CAP_SPIRAM);
+#else
+    /* No PSRAM - use explicitly configured buffers from internal RAM */
+    char *system_prompt = calloc(1, MIMI_CONTEXT_BUF_SIZE);
+    char *history_json = calloc(1, MIMI_LLM_STREAM_BUF_SIZE);
+    char *tool_output = calloc(1, MIMI_TOOL_OUTPUT_SIZE);
+#endif
 
     if (!system_prompt || !history_json || !tool_output) {
-        ESP_LOGE(TAG, "Failed to allocate PSRAM buffers");
+        ESP_LOGE(TAG, "Failed to allocate buffers");
         vTaskDelete(NULL);
         return;
     }

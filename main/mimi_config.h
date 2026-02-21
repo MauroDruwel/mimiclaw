@@ -89,7 +89,24 @@
 #define MIMI_LLM_API_URL             "https://api.anthropic.com/v1/messages"
 #define MIMI_OPENAI_API_URL          "https://api.openai.com/v1/chat/completions"
 #define MIMI_LLM_API_VERSION         "2023-06-01"
+
+/* ========================================================================= */
+/* Memory & Buffer Tuning (Tunable per Target Hardware)                      */
+/* ========================================================================= */
+#if CONFIG_SPIRAM
+/* ESP32-S3 (8MB/16MB PSRAM) and ESP32-CAM (4MB PSRAM) */
 #define MIMI_LLM_STREAM_BUF_SIZE     (32 * 1024)
+#define MIMI_CONTEXT_BUF_SIZE        (16 * 1024)
+#define MIMI_TOOL_OUTPUT_SIZE        (8 * 1024)
+#define MIMI_SEARCH_BUF_SIZE         (16 * 1024)
+#else
+/* Vanilla ESP32 (Internal SRAM only, no PSRAM: ~180KB usable for heap) */
+#define MIMI_LLM_STREAM_BUF_SIZE     (4 * 1024)  /* Grows via realloc if needed */
+#define MIMI_CONTEXT_BUF_SIZE        (4 * 1024)  /* Tailored for TLS heap headroom */
+#define MIMI_TOOL_OUTPUT_SIZE        (4 * 1024)
+#define MIMI_SEARCH_BUF_SIZE         (8 * 1024)
+#endif
+
 #define MIMI_LLM_LOG_VERBOSE_PAYLOAD 0
 #define MIMI_LLM_LOG_PREVIEW_BYTES   160
 
@@ -107,7 +124,6 @@
 #define MIMI_MEMORY_FILE             MIMI_SPIFFS_MEMORY_DIR "/MEMORY.md"
 #define MIMI_SOUL_FILE               MIMI_SPIFFS_CONFIG_DIR "/SOUL.md"
 #define MIMI_USER_FILE               MIMI_SPIFFS_CONFIG_DIR "/USER.md"
-#define MIMI_CONTEXT_BUF_SIZE        (16 * 1024)
 #define MIMI_SESSION_MAX_MSGS        20
 
 /* Cron / Heartbeat */

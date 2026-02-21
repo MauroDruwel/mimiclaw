@@ -115,8 +115,8 @@ esp_err_t session_get_history_json(const char *chat_id, char *buf, size_t size, 
     cJSON_Delete(arr);
 
     if (json_str) {
-        strncpy(buf, json_str, size - 1);
-        buf[size - 1] = '\0';
+        /* Use snprintf for safe bound checking, especially when buf is in PSRAM */
+        snprintf(buf, size, "%s", json_str);
         free(json_str);
     } else {
         snprintf(buf, size, "[]");

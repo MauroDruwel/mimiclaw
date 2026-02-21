@@ -161,6 +161,18 @@ esp_err_t tool_get_time_execute(const char *input_json, char *output, size_t out
 {
     ESP_LOGI(TAG, "Fetching current time...");
 
+    /* If the system clock has already been set (epoch > 2020-01-01), use it directly */
+    time_t now = time(NULL);
+    if (now > 1577836800) { /* 2020-01-01 00:00:00 UTC */
+        setenv("TZ", MIMI_TIMEZONE, 1);
+        tzset();
+        struct tm local;
+        localtime_r(&now, &local);
+        strftime(output, output_size, "%Y-%m-%d %H:%M:%S %Z (%A)", &local);
+        ESP_LOGI(TAG, "Time (from system clock): %s", output);
+        return ESP_OK;
+    }
+
     esp_err_t err;
     if (http_proxy_is_enabled()) {
         err = fetch_time_via_proxy(output, output_size);

@@ -108,7 +108,11 @@ void app_main(void)
     esp_log_level_set("esp-x509-crt-bundle", ESP_LOG_WARN);
 
     ESP_LOGI(TAG, "========================================");
+#ifdef CONFIG_IDF_TARGET_ESP32S3
     ESP_LOGI(TAG, "  MimiClaw - ESP32-S3 AI Agent");
+#else
+    ESP_LOGI(TAG, "  MimiClaw - ESP32 AI Agent");
+#endif
     ESP_LOGI(TAG, "========================================");
 
     /* Print memory info */
