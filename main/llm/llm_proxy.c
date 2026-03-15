@@ -293,7 +293,7 @@ static esp_err_t llm_http_direct(const char *post_data, resp_buf_t *rb, int *out
 
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
-    if (provider_is_openai() || provider_is_openrouter() || provider_is_nvidia()) {
+    if (provider_is_openai_compat()) {
         if (s_api_key[0]) {
             char auth[LLM_API_KEY_MAX_LEN + 16];
             snprintf(auth, sizeof(auth), "Bearer %s", s_api_key);
@@ -321,7 +321,7 @@ static esp_err_t llm_http_via_proxy(const char *post_data, resp_buf_t *rb, int *
     int body_len = strlen(post_data);
     char header[1024];
     int hlen = 0;
-    if (provider_is_openai() || provider_is_openrouter() || provider_is_nvidia()) {
+    if (provider_is_openai_compat()) {
         hlen = snprintf(header, sizeof(header),
             "POST %s HTTP/1.1\r\n"
             "Host: %s\r\n"
