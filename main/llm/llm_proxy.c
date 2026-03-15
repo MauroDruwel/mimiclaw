@@ -121,6 +121,54 @@ static void resp_buf_free(resp_buf_t *rb)
     rb->cap = 0;
 }
 
+/* ── Chunked transfer encoding decoder ───────────────────────── */
+
+static void resp_buf_decode_chunked(resp_buf_t *rb)
+{
+    if (!rb->data || rb->len == 0) return;
+
+    /* Quick check: if body starts with '{' or '[', it's not chunked */
+    size_t i = 0;
+    while (i < rb->len && (rb->data[i] == ' ' || rb->data[i] == '\t')) i++;
+    if (i < rb->len && (rb->data[i] == '{' || rb->data[i] == '[')) return;
+
+    /* Try to decode chunked encoding in-place */
+    char *src = rb->data;
+    char *dst = rb->data;
+    char *end = rb->data + rb->len;
+
+    while (src < end) {
+        /* Parse hex chunk size */
+        char *line_end = strstr(src, "\r\n");
+        if (!line_end) break;
+
+        unsigned long chunk_size = strtoul(src, NULL, 16);
+        if (chunk_size == 0) break;  /* terminal chunk */
+
+        src = line_end + 2;  /* skip past \r\n after size */
+
+        if (src + chunk_size > end) {
+            /* Incomplete chunk, copy what we have */
+            size_t avail = end - src;
+            memmove(dst, src, avail);
+            dst += avail;
+            break;
+        }
+
+        memmove(dst, src, chunk_size);
+        dst += chunk_size;
+        src += chunk_size;
+
+        /* Skip trailing \r\n after chunk data */
+        if (src + 2 <= end && src[0] == '\r' && src[1] == '\n') {
+            src += 2;
+        }
+    }
+
+    rb->len = dst - rb->data;
+    rb->data[rb->len] = '\0';
+}
+
 /* ── HTTP event handler (for esp_http_client direct path) ─────── */
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
@@ -326,6 +374,9 @@ static esp_err_t llm_http_via_proxy(const char *post_data, resp_buf_t *rb, int *
         rb->data[rb->len] = '\0';
     }
 
+    /* Decode chunked transfer encoding if present */
+    resp_buf_decode_chunked(rb);
+
     return ESP_OK;
 }
 
@@ -338,44 +389,6 @@ static esp_err_t llm_http_call(const char *post_data, resp_buf_t *rb, int *out_s
     } else {
         return llm_http_direct(post_data, rb, out_status);
     }
-}
-
-/* ── Parse text from JSON response ────────────────────────────── */
-
-static void extract_text_anthropic(cJSON *root, char *buf, size_t size)
-{
-    buf[0] = '\0';
-    cJSON *content = cJSON_GetObjectItem(root, "content");
-    if (!content || !cJSON_IsArray(content)) return;
-
-    size_t off = 0;
-    cJSON *block;
-    cJSON_ArrayForEach(block, content) {
-        cJSON *btype = cJSON_GetObjectItem(block, "type");
-        if (!btype || strcmp(btype->valuestring, "text") != 0) continue;
-        cJSON *text = cJSON_GetObjectItem(block, "text");
-        if (!text || !cJSON_IsString(text)) continue;
-        size_t tlen = strlen(text->valuestring);
-        size_t copy = (tlen < size - off - 1) ? tlen : size - off - 1;
-        memcpy(buf + off, text->valuestring, copy);
-        off += copy;
-    }
-    buf[off] = '\0';
-}
-
-static void extract_text_openai(cJSON *root, char *buf, size_t size)
-{
-    buf[0] = '\0';
-    cJSON *choices = cJSON_GetObjectItem(root, "choices");
-    if (!choices || !cJSON_IsArray(choices)) return;
-    cJSON *choice0 = cJSON_GetArrayItem(choices, 0);
-    if (!choice0) return;
-    cJSON *message = cJSON_GetObjectItem(choice0, "message");
-    if (!message) return;
-    cJSON *content = cJSON_GetObjectItem(message, "content");
-    if (!content || !cJSON_IsString(content)) return;
-    strncpy(buf, content->valuestring, size - 1);
-    buf[size - 1] = '\0';
 }
 
 static cJSON *convert_tools_openai(const char *tools_json)
@@ -545,118 +558,6 @@ static cJSON *convert_messages_openai(const char *system_prompt, cJSON *messages
     }
 
     return out;
-}
-
-/* ── Public: simple chat (backward compat) ────────────────────── */
-
-esp_err_t llm_chat(const char *system_prompt, const char *messages_json,
-                   char *response_buf, size_t buf_size)
-{
-    if (s_api_key[0] == '\0') {
-        snprintf(response_buf, buf_size, "Error: No API key configured");
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    /* Build request body (non-streaming) */
-    cJSON *body = cJSON_CreateObject();
-    cJSON_AddStringToObject(body, "model", s_model);
-    if (provider_is_openai_compat()) {
-        cJSON_AddNumberToObject(body, "max_completion_tokens", MIMI_LLM_MAX_TOKENS);
-    } else {
-        cJSON_AddNumberToObject(body, "max_tokens", MIMI_LLM_MAX_TOKENS);
-    }
-
-    if (provider_is_openai_compat()) {
-        cJSON *messages = cJSON_Parse(messages_json);
-        if (!messages) {
-            messages = cJSON_CreateArray();
-            cJSON *msg = cJSON_CreateObject();
-            cJSON_AddStringToObject(msg, "role", "user");
-            cJSON_AddStringToObject(msg, "content", messages_json);
-            cJSON_AddItemToArray(messages, msg);
-        }
-        cJSON *openai_msgs = convert_messages_openai(system_prompt, messages);
-        cJSON_Delete(messages);
-        cJSON_AddItemToObject(body, "messages", openai_msgs);
-    } else {
-        cJSON_AddStringToObject(body, "system", system_prompt);
-        cJSON *messages = cJSON_Parse(messages_json);
-        if (messages) {
-            cJSON_AddItemToObject(body, "messages", messages);
-        } else {
-            cJSON *arr = cJSON_CreateArray();
-            cJSON *msg = cJSON_CreateObject();
-            cJSON_AddStringToObject(msg, "role", "user");
-            cJSON_AddStringToObject(msg, "content", messages_json);
-            cJSON_AddItemToArray(arr, msg);
-            cJSON_AddItemToObject(body, "messages", arr);
-        }
-    }
-
-    char *post_data = cJSON_PrintUnformatted(body);
-    cJSON_Delete(body);
-    if (!post_data) {
-        snprintf(response_buf, buf_size, "Error: Failed to build request");
-        return ESP_ERR_NO_MEM;
-    }
-
-    ESP_LOGI(TAG, "Calling LLM API (provider: %s, model: %s, body: %d bytes)",
-             s_provider, s_model, (int)strlen(post_data));
-    llm_log_payload("LLM request", post_data);
-
-    resp_buf_t rb;
-    if (resp_buf_init(&rb, MIMI_LLM_STREAM_BUF_SIZE) != ESP_OK) {
-        free(post_data);
-        snprintf(response_buf, buf_size, "Error: Out of memory");
-        return ESP_ERR_NO_MEM;
-    }
-
-    int status = 0;
-    esp_err_t err = llm_http_call(post_data, &rb, &status);
-    free(post_data);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
-        llm_log_payload("LLM partial response", rb.data);
-        resp_buf_free(&rb);
-        snprintf(response_buf, buf_size, "Error: HTTP request failed (%s)",
-                 esp_err_to_name(err));
-        return err;
-    }
-
-    llm_log_payload("LLM raw response", rb.data);
-
-    if (status != 200) {
-        ESP_LOGE(TAG, "API returned status %d", status);
-        snprintf(response_buf, buf_size, "API error (HTTP %d): %.200s",
-                 status, rb.data ? rb.data : "");
-        resp_buf_free(&rb);
-        return ESP_FAIL;
-    }
-
-    /* Parse JSON response */
-    cJSON *root = cJSON_Parse(rb.data);
-    resp_buf_free(&rb);
-
-    if (!root) {
-        snprintf(response_buf, buf_size, "Error: Failed to parse response");
-        return ESP_FAIL;
-    }
-
-    if (provider_is_openai_compat()) {
-        extract_text_openai(root, response_buf, buf_size);
-    } else {
-        extract_text_anthropic(root, response_buf, buf_size);
-    }
-    cJSON_Delete(root);
-
-    if (response_buf[0] == '\0') {
-        snprintf(response_buf, buf_size, "No response from LLM API");
-    } else {
-        ESP_LOGI(TAG, "LLM response: %d bytes", (int)strlen(response_buf));
-    }
-
-    return ESP_OK;
 }
 
 /* ── Public: chat with tools (non-streaming) ──────────────────── */

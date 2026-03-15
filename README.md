@@ -130,6 +130,7 @@ Edit `main/mimi_secrets.h`:
 #define MIMI_SECRET_API_KEY         "sk-ant-api03-xxxxx"
 #define MIMI_SECRET_MODEL_PROVIDER  "anthropic"     // "anthropic", "openai", "openrouter", or "nvidia"
 #define MIMI_SECRET_SEARCH_KEY      ""              // optional: Brave Search API key
+#define MIMI_SECRET_TAVILY_KEY      ""              // optional: Tavily API key (preferred)
 #define MIMI_SECRET_PROXY_HOST      ""              // optional: e.g. "10.0.0.1"
 #define MIMI_SECRET_PROXY_PORT      ""              // optional: e.g. "7897"
 ```
@@ -158,7 +159,7 @@ idf.py -p PORT flash monitor
 >
 > </details>
 
-### CLI Commands
+### CLI Commands (via UART/COM port)
 
 Connect via serial to configure or debug. **Config commands** let you change settings without recompiling — just plug in a USB cable anywhere.
 
@@ -173,6 +174,7 @@ mimi> set_model gpt-4o             # change LLM model
 mimi> set_proxy 127.0.0.1 7897  # set HTTP proxy
 mimi> clear_proxy                  # remove proxy
 mimi> set_search_key BSA...        # set Brave Search API key
+mimi> set_tavily_key tvly-...      # set Tavily API key (preferred)
 mimi> config_show                  # show all config (masked)
 mimi> config_reset                 # clear NVS, revert to build-time defaults
 ```
@@ -190,6 +192,47 @@ mimi> heartbeat_trigger           # manually trigger a heartbeat check
 mimi> cron_start                  # start cron scheduler now
 mimi> restart                     # reboot
 ```
+
+### USB (JTAG) vs UART: Which Port for What
+
+Most ESP32-S3 dev boards expose **two USB-C ports**:
+
+| Port | Use for |
+|------|---------|
+| **USB** (JTAG) | `idf.py flash`, JTAG debugging |
+| **COM** (UART) | **REPL CLI**, serial console |
+
+> **REPL requires the UART (COM) port.** The USB (JTAG) port does not support interactive REPL input.
+
+<details>
+<summary>Port details & recommended workflow</summary>
+
+| Port | Label | Protocol |
+|------|-------|----------|
+| **USB** | USB / JTAG | Native USB Serial/JTAG |
+| **COM** | UART / COM | External UART bridge (CP2102/CH340) |
+
+The ESP-IDF console/REPL is configured to use UART by default (`CONFIG_ESP_CONSOLE_UART_DEFAULT=y`).
+
+**If you have both ports connected simultaneously:**
+
+- USB (JTAG) handles flash/download and provides secondary serial output
+- UART (COM) provides the primary interactive console for the REPL
+- macOS: both appear as `/dev/cu.usbmodem*` or `/dev/cu.usbserial-*` — run `ls /dev/cu.usb*` to identify
+- Linux: USB (JTAG) → `/dev/ttyACM0`, UART → `/dev/ttyUSB0`
+
+**Recommended workflow:**
+
+```bash
+# Flash via USB (JTAG) port
+idf.py -p /dev/cu.usbmodem11401 flash
+
+# Open REPL via UART (COM) port
+idf.py -p /dev/cu.usbserial-110 monitor
+# or use any serial terminal: screen, minicom, PuTTY at 115200 baud
+```
+
+</details>
 
 ## Memory
 
@@ -211,13 +254,13 @@ MimiClaw supports tool calling for Anthropic, OpenAI, OpenRouter, and NVIDIA NIM
 
 | Tool | Description |
 |------|-------------|
-| `web_search` | Search the web via Brave Search API for current information |
+| `web_search` | Search the web via Tavily (preferred) or Brave for current information |
 | `get_current_time` | Fetch current date/time via HTTP and set the system clock |
 | `cron_add` | Schedule a recurring or one-shot task (the LLM creates cron jobs on its own) |
 | `cron_list` | List all scheduled cron jobs |
 | `cron_remove` | Remove a cron job by ID |
 
-To enable web search, set a [Brave Search API key](https://brave.com/search/api/) via `MIMI_SECRET_SEARCH_KEY` in `mimi_secrets.h`.
+To enable web search, set a [Tavily API key](https://app.tavily.com/home) via `MIMI_SECRET_TAVILY_KEY` (preferred), or a [Brave Search API key](https://brave.com/search/api/) via `MIMI_SECRET_SEARCH_KEY` in `mimi_secrets.h`.
 
 ## Cron Tasks
 
@@ -248,10 +291,20 @@ Technical details live in the `docs/` folder:
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — system design, module map, task layout, memory budget, protocols, flash partitions
 - **[docs/TODO.md](docs/TODO.md)** — feature gap tracker and roadmap
+- **[docs/WIFI_ONBOARDING_AP.md](docs/WIFI_ONBOARDING_AP.md)** — how the local `MimiClaw-XXXX` onboarding/admin AP flow works
+- **[docs/tool-setup/](docs/tool-setup/README.md)** — configuration guides for external service integrations (Tavily, etc.)
 
 ## Contributing
 
-Please read **[docs/CONTRIBUTE.md](docs/CONTRIBUTE.md)** before opening issues or pull requests.
+Please read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening issues or pull requests.
+
+## Contributors
+
+Thanks to everyone who has contributed to MimiClaw.
+
+<a href="https://github.com/memovai/mimiclaw/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=memovai/mimiclaw" alt="MimiClaw contributors" />
+</a>
 
 ## License
 
@@ -263,4 +316,10 @@ Inspired by [OpenClaw](https://github.com/openclaw/openclaw) and [Nanobot](https
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=memovai/mimiclaw&type=Date)](https://star-history.com/#memovai/mimiclaw&Date)
+<a href="https://www.star-history.com/?repos=memovai%2Fmimiclaw&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+ </picture>
+</a>

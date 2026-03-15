@@ -130,6 +130,7 @@ cp main/mimi_secrets.h.example main/mimi_secrets.h
 #define MIMI_SECRET_API_KEY         "sk-ant-api03-xxxxx"
 #define MIMI_SECRET_MODEL_PROVIDER  "anthropic"     // "anthropic" または "openai"
 #define MIMI_SECRET_SEARCH_KEY      ""              // 任意：Brave Search APIキー
+#define MIMI_SECRET_TAVILY_KEY      ""              // 任意：Tavily APIキー（優先）
 #define MIMI_SECRET_PROXY_HOST      ""              // 任意：例 "10.0.0.1"
 #define MIMI_SECRET_PROXY_PORT      ""              // 任意：例 "7897"
 ```
@@ -158,7 +159,7 @@ idf.py -p PORT flash monitor
 >
 > </details>
 
-### CLIコマンド
+### CLIコマンド（UART/COMポート経由）
 
 シリアル接続で設定やデバッグができます。**設定コマンド**により再コンパイル不要で設定変更可能 — USBケーブルを挿すだけ。
 
@@ -173,6 +174,7 @@ mimi> set_model gpt-4o             # LLMモデルを変更
 mimi> set_proxy 127.0.0.1 7897    # HTTPプロキシを設定
 mimi> clear_proxy                  # プロキシを削除
 mimi> set_search_key BSA...        # Brave Search APIキーを設定
+mimi> set_tavily_key tvly-...      # Tavily APIキーを設定（優先）
 mimi> config_show                  # 全設定を表示（マスク付き）
 mimi> config_reset                 # NVSをクリア、ビルド時デフォルトに戻す
 ```
@@ -190,6 +192,47 @@ mimi> heartbeat_trigger           # ハートビートチェックを手動ト�
 mimi> cron_start                  # cronスケジューラを今すぐ開始
 mimi> restart                     # 再起動
 ```
+
+### USB（JTAG）vs UART：どのポートで何をするか
+
+ほとんどの ESP32-S3 開発ボードには **2つの USB-C ポート**があります：
+
+| ポート | 用途 |
+|--------|------|
+| **USB**（JTAG） | `idf.py flash`、JTAGデバッグ |
+| **COM**（UART） | **REPL CLI**、シリアルコンソール |
+
+> **REPLにはUART（COM）ポートが必要です。** USB（JTAG）ポートは対話的なREPL入力をサポートしません。
+
+<details>
+<summary>ポート詳細と推奨ワークフロー</summary>
+
+| ポート | ラベル | プロトコル |
+|--------|--------|------------|
+| **USB** | USB / JTAG | ネイティブ USB Serial/JTAG |
+| **COM** | UART / COM | 外部 UART ブリッジ（CP2102/CH340） |
+
+ESP-IDFコンソールはデフォルトでUART出力に設定されています（`CONFIG_ESP_CONSOLE_UART_DEFAULT=y`）。
+
+**両方のポートを同時に接続している場合：**
+
+- USB（JTAG）ポートはフラッシュ/ダウンロードを処理し、補助シリアル出力を提供
+- UART（COM）ポートはREPL用のメインインタラクティブコンソールを提供
+- macOS では両ポートとも `/dev/cu.usbmodem*` または `/dev/cu.usbserial-*` として表示 — `ls /dev/cu.usb*` で確認
+- Linux では USB（JTAG）は通常 `/dev/ttyACM0`、UART は通常 `/dev/ttyUSB0`
+
+**推奨ワークフロー：**
+
+```bash
+# USB（JTAG）ポートでフラッシュ
+idf.py -p /dev/cu.usbmodem11401 flash
+
+# UART（COM）ポートでREPLを開く
+idf.py -p /dev/cu.usbserial-110 monitor
+# または任意のシリアルターミナル：screen、minicom、PuTTY（ボーレート 115200）
+```
+
+</details>
 
 ## メモリ
 
@@ -211,13 +254,13 @@ MimiClawはAnthropicとOpenAI両方のツール呼び出しをサポート — L
 
 | ツール | 説明 |
 |--------|------|
-| `web_search` | Brave Search APIでウェブ検索、最新情報を取得 |
+| `web_search` | Tavily（優先）またはBraveでウェブ検索し、最新情報を取得 |
 | `get_current_time` | HTTP経由で現在の日時を取得し、システムクロックを設定 |
 | `cron_add` | 定期または単発タスクをスケジュール（LLMが自律的にcronジョブを作成） |
 | `cron_list` | スケジュール済みのcronジョブを一覧表示 |
 | `cron_remove` | IDでcronジョブを削除 |
 
-ウェブ検索を有効にするには、`mimi_secrets.h`で[Brave Search APIキー](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）を設定してください。
+ウェブ検索を有効にするには、`mimi_secrets.h`で[Tavily APIキー](https://app.tavily.com/home)（優先、`MIMI_SECRET_TAVILY_KEY`）または[Brave Search APIキー](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）を設定してください。
 
 ## Cronタスク
 
@@ -248,10 +291,20 @@ MimiClawにはcronスケジューラが内蔵されており、AIが自律的に
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — システム設計、モジュール構成、タスクレイアウト、メモリバジェット、プロトコル、Flashパーティション
 - **[docs/TODO.md](docs/TODO.md)** — 機能ギャップとロードマップ
+- **[docs/WIFI_ONBOARDING_AP.md](docs/WIFI_ONBOARDING_AP.md)** — ローカル `MimiClaw-XXXX` onboarding / 管理アクセスポイントの使い方
+- **[docs/im-integration/](docs/im-integration/README.md)** — IMチャネル統合ガイド（Feishuなど）
 
-## Contributing
+## 貢献
 
-Please read **[docs/CONTRIBUTE.md](docs/CONTRIBUTE.md)** before opening issues or pull requests.
+Issue や Pull Request を作成する前に、**[CONTRIBUTING.md](CONTRIBUTING.md)** をご確認ください。
+
+## コントリビューター
+
+MimiClaw に貢献してくれた皆さんに感謝します。
+
+<a href="https://github.com/memovai/mimiclaw/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=memovai/mimiclaw" alt="MimiClaw contributors" />
+</a>
 
 ## ライセンス
 
@@ -263,4 +316,10 @@ MIT
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=memovai/mimiclaw&type=Date)](https://star-history.com/#memovai/mimiclaw&Date)
+<a href="https://www.star-history.com/?repos=memovai%2Fmimiclaw&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+ </picture>
+</a>

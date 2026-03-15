@@ -130,6 +130,7 @@ cp main/mimi_secrets.h.example main/mimi_secrets.h
 #define MIMI_SECRET_API_KEY         "sk-ant-api03-xxxxx"
 #define MIMI_SECRET_MODEL_PROVIDER  "anthropic"     // "anthropic" 或 "openai"
 #define MIMI_SECRET_SEARCH_KEY      ""              // 可选：Brave Search API key
+#define MIMI_SECRET_TAVILY_KEY      ""              // 可选：Tavily API key（优先）
 #define MIMI_SECRET_PROXY_HOST      "10.0.0.1"      // 可选：代理地址
 #define MIMI_SECRET_PROXY_PORT      "7897"           // 可选：代理端口
 ```
@@ -173,7 +174,7 @@ mimi> clear_proxy                    # 清除代理
 
 > **提示**：确保 ESP32-S3 和代理机器在同一局域网。Clash Verge 在「设置 → 允许局域网」中开启。
 
-### CLI 命令
+### CLI 命令（通过 UART/COM 口连接）
 
 通过串口连接即可配置和调试。**配置命令**让你无需重新编译就能修改设置 — 随时随地插上 USB 线就能改。
 
@@ -188,6 +189,7 @@ mimi> set_model gpt-4o             # 换模型
 mimi> set_proxy 192.168.1.83 7897  # 设置代理
 mimi> clear_proxy                  # 清除代理
 mimi> set_search_key BSA...        # 设置 Brave Search API Key
+mimi> set_tavily_key tvly-...      # 设置 Tavily API Key（优先）
 mimi> config_show                  # 查看所有配置（脱敏显示）
 mimi> config_reset                 # 清除 NVS，恢复编译时默认值
 ```
@@ -205,6 +207,47 @@ mimi> heartbeat_trigger           # 手动触发一次心跳检查
 mimi> cron_start                  # 立即启动 cron 调度器
 mimi> restart                     # 重启
 ```
+
+### USB (JTAG) 与 UART：哪个口做什么
+
+大多数 ESP32-S3 开发板有 **两个 USB-C 口**：
+
+| 端口 | 用途 |
+|------|------|
+| **USB**（JTAG） | `idf.py flash`、JTAG 调试 |
+| **COM**（UART） | **REPL 命令行**、串口控制台 |
+
+> **REPL 必须连接 UART（COM）口。** USB（JTAG）口不支持交互式 REPL 输入。
+
+<details>
+<summary>端口详情与推荐工作流</summary>
+
+| 端口 | 标注 | 协议 |
+|------|------|------|
+| **USB** | USB / JTAG | 原生 USB Serial/JTAG |
+| **COM** | UART / COM | 外置 UART 桥接芯片（CP2102/CH340） |
+
+ESP-IDF 控制台默认配置为 UART 输出（`CONFIG_ESP_CONSOLE_UART_DEFAULT=y`）。
+
+**同时连接两个口时：**
+
+- USB（JTAG）口负责烧录/下载，并提供辅助串口输出
+- UART（COM）口提供主要的交互式控制台，用于 REPL
+- macOS 下两个口都会显示为 `/dev/cu.usbmodem*` 或 `/dev/cu.usbserial-*`，用 `ls /dev/cu.usb*` 区分
+- Linux 下 USB（JTAG）通常是 `/dev/ttyACM0`，UART 通常是 `/dev/ttyUSB0`
+
+**推荐工作流：**
+
+```bash
+# 通过 USB（JTAG）口烧录
+idf.py -p /dev/cu.usbmodem11401 flash
+
+# 通过 UART（COM）口打开 REPL
+idf.py -p /dev/cu.usbserial-110 monitor
+# 或使用任意串口工具：screen、minicom、PuTTY，波特率 115200
+```
+
+</details>
 
 ## 记忆
 
@@ -226,13 +269,13 @@ MimiClaw 同时支持 Anthropic 和 OpenAI 的工具调用 — LLM 在对话中�
 
 | 工具 | 说明 |
 |------|------|
-| `web_search` | 通过 Brave Search API 搜索网页，获取实时信息 |
+| `web_search` | 通过 Tavily（优先）或 Brave 搜索网页，获取实时信息 |
 | `get_current_time` | 通过 HTTP 获取当前日期和时间，并设置系统时钟 |
 | `cron_add` | 创建定时或一次性任务（LLM 自主创建 cron 任务） |
 | `cron_list` | 列出所有已调度的 cron 任务 |
 | `cron_remove` | 按 ID 删除 cron 任务 |
 
-启用网页搜索需要在 `mimi_secrets.h` 中设置 [Brave Search API key](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）。
+启用网页搜索可在 `mimi_secrets.h` 中设置 [Tavily API key](https://app.tavily.com/home)（优先，`MIMI_SECRET_TAVILY_KEY`），或 [Brave Search API key](https://brave.com/search/api/)（`MIMI_SECRET_SEARCH_KEY`）。
 
 ## 定时任务（Cron）
 
@@ -263,10 +306,20 @@ MimiClaw 内置 cron 调度器，让 AI 可以自主安排任务。LLM 可以通
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — 系统设计、模块划分、任务布局、内存分配、协议、Flash 分区
 - **[docs/TODO.md](docs/TODO.md)** — 功能差距和路线图
+- **[docs/WIFI_ONBOARDING_AP.md](docs/WIFI_ONBOARDING_AP.md)** — 说明本地 `MimiClaw-XXXX` onboarding / 管理热点的使用方式
+- **[docs/im-integration/](docs/im-integration/README.md)** — IM 通道集成指南（飞书等）
 
-## Contributing
+## 贡献
 
-Please read **[docs/CONTRIBUTE.md](docs/CONTRIBUTE.md)** before opening issues or pull requests.
+提交 Issue 或 Pull Request 前，请先阅读 **[CONTRIBUTING.md](CONTRIBUTING.md)**。
+
+## 贡献者
+
+感谢所有为 MimiClaw 做出贡献的开发者。
+
+<a href="https://github.com/memovai/mimiclaw/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=memovai/mimiclaw" alt="MimiClaw contributors" />
+</a>
 
 ## 许可证
 
@@ -278,4 +331,10 @@ MIT
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=memovai/mimiclaw&type=Date)](https://star-history.com/#memovai/mimiclaw&Date)
+<a href="https://www.star-history.com/?repos=memovai%2Fmimiclaw&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=memovai/mimiclaw&type=date&legend=top-left" />
+ </picture>
+</a>

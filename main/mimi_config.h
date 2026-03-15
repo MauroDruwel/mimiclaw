@@ -31,8 +31,20 @@
 #ifndef MIMI_SECRET_PROXY_PORT
 #define MIMI_SECRET_PROXY_PORT      ""
 #endif
+#ifndef MIMI_SECRET_PROXY_TYPE
+#define MIMI_SECRET_PROXY_TYPE      ""
+#endif
 #ifndef MIMI_SECRET_SEARCH_KEY
 #define MIMI_SECRET_SEARCH_KEY      ""
+#endif
+#ifndef MIMI_SECRET_FEISHU_APP_ID
+#define MIMI_SECRET_FEISHU_APP_ID   ""
+#endif
+#ifndef MIMI_SECRET_FEISHU_APP_SECRET
+#define MIMI_SECRET_FEISHU_APP_SECRET ""
+#endif
+#ifndef MIMI_SECRET_TAVILY_KEY
+#define MIMI_SECRET_TAVILY_KEY      ""
 #endif
 
 /* WiFi */
@@ -48,6 +60,15 @@
 #define MIMI_TG_POLL_CORE            0
 #define MIMI_TG_CARD_SHOW_MS         3000
 #define MIMI_TG_CARD_BODY_SCALE      3
+
+/* Feishu Bot */
+#define MIMI_FEISHU_MAX_MSG_LEN          4096
+#define MIMI_FEISHU_POLL_STACK           (12 * 1024)
+#define MIMI_FEISHU_POLL_PRIO            5
+#define MIMI_FEISHU_POLL_CORE            0
+#define MIMI_FEISHU_WEBHOOK_PORT         18790
+#define MIMI_FEISHU_WEBHOOK_PATH         "/feishu/events"
+#define MIMI_FEISHU_WEBHOOK_MAX_BODY     (16 * 1024)
 
 /* Agent Loop */
 #define MIMI_AGENT_STACK             (24 * 1024)
@@ -82,24 +103,27 @@
 
 /* Memory / SPIFFS */
 #define MIMI_SPIFFS_BASE             "/spiffs"
-#define MIMI_SPIFFS_CONFIG_DIR       "/spiffs/config"
-#define MIMI_SPIFFS_MEMORY_DIR       "/spiffs/memory"
-#define MIMI_SPIFFS_SESSION_DIR      "/spiffs/sessions"
-#define MIMI_MEMORY_FILE             "/spiffs/memory/MEMORY.md"
-#define MIMI_SOUL_FILE               "/spiffs/config/SOUL.md"
-#define MIMI_USER_FILE               "/spiffs/config/USER.md"
+#define MIMI_SPIFFS_CONFIG_DIR       MIMI_SPIFFS_BASE "/config"
+#define MIMI_SPIFFS_MEMORY_DIR       MIMI_SPIFFS_BASE "/memory"
+#define MIMI_SPIFFS_SESSION_DIR      MIMI_SPIFFS_BASE "/sessions"
+#define MIMI_MEMORY_FILE             MIMI_SPIFFS_MEMORY_DIR "/MEMORY.md"
+#define MIMI_SOUL_FILE               MIMI_SPIFFS_CONFIG_DIR "/SOUL.md"
+#define MIMI_USER_FILE               MIMI_SPIFFS_CONFIG_DIR "/USER.md"
 #define MIMI_CONTEXT_BUF_SIZE        (16 * 1024)
 #define MIMI_SESSION_MAX_MSGS        20
 
 /* Cron / Heartbeat */
-#define MIMI_CRON_FILE               "/spiffs/cron.json"
+#define MIMI_CRON_FILE               MIMI_SPIFFS_BASE "/cron.json"
 #define MIMI_CRON_MAX_JOBS           16
 #define MIMI_CRON_CHECK_INTERVAL_MS  (60 * 1000)
-#define MIMI_HEARTBEAT_FILE          "/spiffs/HEARTBEAT.md"
+#define MIMI_HEARTBEAT_FILE          MIMI_SPIFFS_BASE "/HEARTBEAT.md"
 #define MIMI_HEARTBEAT_INTERVAL_MS   (30 * 60 * 1000)
 
+/* GPIO */
+#define MIMI_GPIO_CONFIG_SECTION     1   /* enable GPIO tools */
+
 /* Skills */
-#define MIMI_SKILLS_PREFIX           "/spiffs/skills/"
+#define MIMI_SKILLS_PREFIX           MIMI_SPIFFS_BASE "/skills/"
 
 /* WebSocket Gateway */
 #define MIMI_WS_PORT                 18789
@@ -113,6 +137,7 @@
 /* NVS Namespaces */
 #define MIMI_NVS_WIFI                "wifi_config"
 #define MIMI_NVS_TG                  "tg_config"
+#define MIMI_NVS_FEISHU              "feishu_config"
 #define MIMI_NVS_LLM                 "llm_config"
 #define MIMI_NVS_PROXY               "proxy_config"
 #define MIMI_NVS_SEARCH              "search_config"
@@ -121,8 +146,19 @@
 #define MIMI_NVS_KEY_SSID            "ssid"
 #define MIMI_NVS_KEY_PASS            "password"
 #define MIMI_NVS_KEY_TG_TOKEN        "bot_token"
+#define MIMI_NVS_KEY_FEISHU_APP_ID   "app_id"
+#define MIMI_NVS_KEY_FEISHU_APP_SECRET "app_secret"
 #define MIMI_NVS_KEY_API_KEY         "api_key"
+#define MIMI_NVS_KEY_TAVILY_KEY      "tavily_key"
 #define MIMI_NVS_KEY_MODEL           "model"
 #define MIMI_NVS_KEY_PROVIDER        "provider"
 #define MIMI_NVS_KEY_PROXY_HOST      "host"
 #define MIMI_NVS_KEY_PROXY_PORT      "port"
+#define MIMI_NVS_KEY_PROXY_TYPE      "proxy_type"
+
+/* WiFi Onboarding (Captive Portal) */
+#define MIMI_ONBOARD_AP_PREFIX    "MimiClaw-"
+#define MIMI_ONBOARD_AP_PASS      ""          /* open network */
+#define MIMI_ONBOARD_HTTP_PORT    80
+#define MIMI_ONBOARD_DNS_STACK    (4 * 1024)
+#define MIMI_ONBOARD_MAX_SCAN     20

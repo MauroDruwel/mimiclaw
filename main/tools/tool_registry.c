@@ -1,8 +1,10 @@
 #include "tool_registry.h"
+#include "mimi_config.h"
 #include "tools/tool_web_search.h"
 #include "tools/tool_get_time.h"
 #include "tools/tool_files.h"
 #include "tools/tool_cron.h"
+#include "tools/tool_gpio.h"
 
 #include <string.h>
 #include "esp_log.h"
@@ -10,7 +12,7 @@
 
 static const char *TAG = "tools";
 
-#define MAX_TOOLS 12
+#define MAX_TOOLS 16
 
 static mimi_tool_t s_tools[MAX_TOOLS];
 static int s_tool_count = 0;
@@ -59,7 +61,7 @@ esp_err_t tool_registry_init(void)
 
     mimi_tool_t ws = {
         .name = "web_search",
-        .description = "Search the web for current information. Use this when you need up-to-date facts, news, weather, or anything beyond your training data.",
+        .description = "Search the web for current information via Tavily (preferred) or Brave when configured.",
         .input_schema_json =
             "{\"type\":\"object\","
             "\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The search query\"}},"
@@ -83,10 +85,10 @@ esp_err_t tool_registry_init(void)
     /* Register read_file */
     mimi_tool_t rf = {
         .name = "read_file",
-        .description = "Read a file from SPIFFS storage. Path must start with /spiffs/.",
+        .description = "Read a file from SPIFFS storage. Path must start with " MIMI_SPIFFS_BASE "/.",
         .input_schema_json =
             "{\"type\":\"object\","
-            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with /spiffs/\"}},"
+            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with " MIMI_SPIFFS_BASE "/\"}},"
             "\"required\":[\"path\"]}",
         .execute = tool_read_file_execute,
     };
@@ -95,10 +97,10 @@ esp_err_t tool_registry_init(void)
     /* Register write_file */
     mimi_tool_t wf = {
         .name = "write_file",
-        .description = "Write or overwrite a file on SPIFFS storage. Path must start with /spiffs/.",
+        .description = "Write or overwrite a file on SPIFFS storage. Path must start with " MIMI_SPIFFS_BASE "/.",
         .input_schema_json =
             "{\"type\":\"object\","
-            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with /spiffs/\"},"
+            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with " MIMI_SPIFFS_BASE "/\"},"
             "\"content\":{\"type\":\"string\",\"description\":\"File content to write\"}},"
             "\"required\":[\"path\",\"content\"]}",
         .execute = tool_write_file_execute,
@@ -111,7 +113,7 @@ esp_err_t tool_registry_init(void)
         .description = "Find and replace text in a file on SPIFFS. Replaces first occurrence of old_string with new_string.",
         .input_schema_json =
             "{\"type\":\"object\","
-            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with /spiffs/\"},"
+            "\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path starting with " MIMI_SPIFFS_BASE "/\"},"
             "\"old_string\":{\"type\":\"string\",\"description\":\"Text to find\"},"
             "\"new_string\":{\"type\":\"string\",\"description\":\"Replacement text\"}},"
             "\"required\":[\"path\",\"old_string\",\"new_string\"]}",
@@ -125,7 +127,7 @@ esp_err_t tool_registry_init(void)
         .description = "List files on SPIFFS storage, optionally filtered by path prefix.",
         .input_schema_json =
             "{\"type\":\"object\","
-            "\"properties\":{\"prefix\":{\"type\":\"string\",\"description\":\"Optional path prefix filter, e.g. /spiffs/memory/\"}},"
+            "\"properties\":{\"prefix\":{\"type\":\"string\",\"description\":\"Optional path prefix filter, e.g. " MIMI_SPIFFS_BASE "/memory/\"}},"
             "\"required\":[]}",
         .execute = tool_list_dir_execute,
     };
@@ -174,6 +176,43 @@ esp_err_t tool_registry_init(void)
         .execute = tool_cron_remove_execute,
     };
     register_tool(&cr);
+
+    /* Register GPIO tools */
+    tool_gpio_init();
+
+    mimi_tool_t gw = {
+        .name = "gpio_write",
+        .description = "Set a GPIO pin HIGH or LOW. Controls LEDs, relays, and other digital outputs.",
+        .input_schema_json =
+            "{\"type\":\"object\","
+            "\"properties\":{\"pin\":{\"type\":\"integer\",\"description\":\"GPIO pin number\"},"
+            "\"state\":{\"type\":\"integer\",\"description\":\"1 for HIGH, 0 for LOW\"}},"
+            "\"required\":[\"pin\",\"state\"]}",
+        .execute = tool_gpio_write_execute,
+    };
+    register_tool(&gw);
+
+    mimi_tool_t gr = {
+        .name = "gpio_read",
+        .description = "Read a GPIO pin state. Returns HIGH or LOW. Use for checking switches, sensors, and digital inputs.",
+        .input_schema_json =
+            "{\"type\":\"object\","
+            "\"properties\":{\"pin\":{\"type\":\"integer\",\"description\":\"GPIO pin number\"}},"
+            "\"required\":[\"pin\"]}",
+        .execute = tool_gpio_read_execute,
+    };
+    register_tool(&gr);
+
+    mimi_tool_t ga = {
+        .name = "gpio_read_all",
+        .description = "Read all allowed GPIO pin states in a single call. Returns each pin's HIGH/LOW state.",
+        .input_schema_json =
+            "{\"type\":\"object\","
+            "\"properties\":{},"
+            "\"required\":[]}",
+        .execute = tool_gpio_read_all_execute,
+    };
+    register_tool(&ga);
 
     build_tools_json();
 
