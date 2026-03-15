@@ -285,7 +285,7 @@ MimiClaw supports multiple LLM providers via a unified API proxy:
 - **Anthropic** (`anthropic`) - Native Messages API
 - **OpenAI** (`openai`) - Chat Completions API
 - **OpenRouter** (`openrouter`) - OpenAI-compatible endpoint
-- **NVIDIA NIM** (`nvidia`) - OpenAI-compatible endpoint (free for development/prototyping for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing)
+- **NVIDIA NIM** (`nvidia`) - OpenAI-compatible endpoint
 
 ### Anthropic API Format
 

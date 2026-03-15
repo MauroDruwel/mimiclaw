@@ -31,7 +31,7 @@ MimiClaw turns a tiny ESP32-S3 board into a personal AI assistant. Plug it into 
 
 ![](assets/mimiclaw.png)
 
-You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it into an agent loop — the LLM thinks, calls tools, reads memory — and sends the reply back. Supports **Anthropic (Claude)**, **OpenAI (GPT)**, **OpenRouter**, and **[NVIDIA NIM](https://www.nvidia.com/en-us/ai/#nim) (free for development for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing)** as providers, switchable at runtime. Everything runs on a single $5 chip with all your data stored locally on flash.
+You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it into an agent loop — the LLM thinks, calls tools, reads memory — and sends the reply back. Supports **Anthropic (Claude)**, **OpenAI (GPT)**, **OpenRouter**, and **NVIDIA NIM** as providers, switchable at runtime. Everything runs on a single $5 chip with all your data stored locally on flash.
 
 ## Quick Start
 
@@ -40,7 +40,7 @@ You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it int
 - An **ESP32-S3 dev board** with 16 MB flash and 8 MB PSRAM (e.g. Xiaozhi AI board, ~$10)
 - A **USB Type-C cable**
 - A **Telegram bot token** — talk to [@BotFather](https://t.me/BotFather) on Telegram to create one
-- An **API key** — from [Anthropic](https://console.anthropic.com), [OpenAI](https://platform.openai.com), [OpenRouter](https://openrouter.ai), or [NVIDIA NIM](https://org.ngc.nvidia.com/setup/api-keys) (free for development for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing)
+- An **API key** — from [Anthropic](https://console.anthropic.com), [OpenAI](https://platform.openai.com), [OpenRouter](https://openrouter.ai), or [NVIDIA NIM](https://org.ngc.nvidia.com/setup/api-keys)
 
 ### Install
 
@@ -237,7 +237,7 @@ This turns MimiClaw into a proactive assistant — write tasks to `HEARTBEAT.md`
 - **OTA updates** — flash new firmware over WiFi, no USB needed
 - **Dual-core** — network I/O and AI processing run on separate CPU cores
 - **HTTP proxy** — CONNECT tunnel support for restricted networks
-- **Multi-provider** — supports Anthropic (Claude), OpenAI (GPT), OpenRouter, and NVIDIA NIM (free for development for NVIDIA Developer Program members; production requires NVIDIA AI Enterprise licensing), switchable at runtime
+- **Multi-provider** — supports Anthropic (Claude), OpenAI (GPT), OpenRouter, and NVIDIA NIM, switchable at runtime
 - **Cron scheduler** — the AI can schedule its own recurring and one-shot tasks, persisted across reboots
 - **Heartbeat** — periodically checks a task file and prompts the AI to act autonomously
 - **Tool use** — ReAct agent loop with tool calling for all providers

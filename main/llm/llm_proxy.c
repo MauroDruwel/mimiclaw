@@ -161,6 +161,7 @@ static const char *llm_api_url(void)
 /** Return the HTTP Host header value for the active provider. */
 static const char *llm_api_host(void)
 {
+    /* TODO(PR#40): derive host from configured API URL once custom provider URLs are supported. */
     if (provider_is_openai()) return "api.openai.com";
     if (provider_is_openrouter()) return "openrouter.ai";
     if (provider_is_nvidia()) return "integrate.api.nvidia.com";
