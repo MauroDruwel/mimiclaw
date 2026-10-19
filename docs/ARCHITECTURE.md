@@ -224,22 +224,23 @@ Session files are JSONL (one JSON object per line):
 
 ---
 
-## Configuration
+## Configuration & Runtime Precedence
 
-All configuration is done exclusively through `mimi_secrets.h` at build time. There is no runtime configuration — changing any setting requires `idf.py fullclean && idf.py build`.
+MimiClaw supports a layered configuration architecture:
+1. **Build-time Defaults (`main/mimi_secrets.h`)**: Provides initial fallback configuration compiled into firmware (e.g. initial WiFi credentials, Telegram bot token, default model provider and API key).
+2. **Runtime NVS Overrides (Highest Precedence)**: Interactive serial CLI commands (`set_api_key`, `set_model`, `set_model_provider`, `wifi_set`, etc.) persist values to Non-Volatile Storage (NVS). On boot, subsystem initializers (e.g. `llm_proxy_init`, `wifi_manager_init`) read NVS keys first; if present, runtime NVS values override compile-time definitions in `mimi_secrets.h`.
 
-| Define                       | Description                             |
-|------------------------------|-----------------------------------------|
-| `MIMI_SECRET_WIFI_SSID`     | WiFi SSID                               |
-| `MIMI_SECRET_WIFI_PASS`     | WiFi password                           |
-| `MIMI_SECRET_TG_TOKEN`      | Telegram Bot API token                  |
-| `MIMI_SECRET_API_KEY`       | LLM API key (Anthropic, OpenAI, OpenRouter, or NVIDIA NIM) |
-| `MIMI_SECRET_MODEL`         | Model ID (default: claude-opus-4-6)     |
-| `MIMI_SECRET_PROXY_HOST`    | HTTP proxy hostname/IP (optional)       |
-| `MIMI_SECRET_PROXY_PORT`    | HTTP proxy port (optional)              |
-| `MIMI_SECRET_SEARCH_KEY`    | Brave Search API key (optional)         |
-
-NVS is still initialized (required by ESP-IDF WiFi internals) but is not used for application configuration.
+| Define / Key                 | NVS Namespace / Key         | Description                             |
+|------------------------------|-----------------------------|-----------------------------------------|
+| `MIMI_SECRET_WIFI_SSID`     | `wifi_config` / `ssid`      | WiFi SSID                               |
+| `MIMI_SECRET_WIFI_PASS`     | `wifi_config` / `password`  | WiFi password                           |
+| `MIMI_SECRET_TG_TOKEN`      | `tg_config` / `bot_token`   | Telegram Bot API token                  |
+| `MIMI_SECRET_API_KEY`       | `llm_config` / `api_key`    | LLM API key (Anthropic, OpenAI, OpenRouter, or NVIDIA NIM) |
+| `MIMI_SECRET_MODEL`         | `llm_config` / `model`      | Model ID (e.g. `claude-opus-4-6`, `meta/llama-3.1-70b-instruct`) |
+| `MIMI_SECRET_MODEL_PROVIDER`| `llm_config` / `provider`   | Model provider (`anthropic`, `openai`, `openrouter`, `nvidia`) |
+| `MIMI_SECRET_PROXY_HOST`    | `proxy_config` / `host`     | HTTP proxy hostname/IP (optional)       |
+| `MIMI_SECRET_PROXY_PORT`    | `proxy_config` / `port`     | HTTP proxy port (optional)              |
+| `MIMI_SECRET_SEARCH_KEY`    | `search_config` / `api_key` | Brave / Tavily Search API key (optional)|
 
 ---
 
@@ -285,7 +286,7 @@ MimiClaw supports multiple LLM providers via a unified API proxy:
 - **Anthropic** (`anthropic`) - Native Messages API
 - **OpenAI** (`openai`) - Chat Completions API
 - **OpenRouter** (`openrouter`) - OpenAI-compatible endpoint
-- **NVIDIA NIM** (`nvidia`) - OpenAI-compatible endpoint
+- **NVIDIA NIM** (`nvidia`) - OpenAI-compatible endpoint (hosted via [NVIDIA NIM](https://build.nvidia.com); subject to the [NVIDIA Developer Program Agreement](https://www.nvidia.com/en-us/agreements/enterprise-software/developer-program-license/))
 
 ### Anthropic API Format
 

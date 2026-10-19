@@ -194,7 +194,8 @@ static bool provider_is_openrouter(void)
 
 static bool provider_is_nvidia(void)
 {
-    return strcmp(s_provider, "nvidia") == 0;
+    return strcmp(s_provider, "nvidia") == 0 ||
+           strcmp(s_provider, "nvidia_nim") == 0;
 }
 
 /** Return the full API URL for the active provider. */
