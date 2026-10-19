@@ -33,7 +33,7 @@ CONFIG_HTTPD_WS_SUPPORT=y
 
 # Custom partition table
 CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_esp32s3.csv"
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
 # Console: USB Serial/JTAG primary (supports both input and output via USB)
 # ESP-IDF v5.5+ has TX timeout protection (50ms) so device won't hang
